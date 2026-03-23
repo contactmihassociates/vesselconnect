@@ -1,0 +1,192 @@
+{
+  "name": "WhatsApp Vessel Scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-vessel-scraper",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wa-trigger-001",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "whatsapp-vessel-scraper"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract message text from various WhatsApp bridge formats\n// Supports: Evolution API, Baileys, WA Web Plus, Tasker, generic\nconst body = $input.item.json.body || $input.item.json;\n\nlet messageText = '';\nlet senderName = '';\nlet senderPhone = '';\nlet timestamp = new Date().toISOString();\n\n// Evolution API format\nif (body.data && body.data.message) {\n  messageText = body.data.message.conversation \n    || body.data.message.extendedTextMessage?.text \n    || '';\n  senderName = body.data.pushName || '';\n  senderPhone = body.data.key?.remoteJid?.replace('@s.whatsapp.net', '') || '';\n  timestamp = new Date(body.data.messageTimestamp * 1000).toISOString();\n}\n// Baileys / generic format\nelse if (body.message) {\n  messageText = body.message.conversation \n    || body.message.extendedTextMessage?.text \n    || body.message || '';\n  senderName = body.pushName || body.senderName || '';\n  senderPhone = body.from || body.sender || '';\n}\n// Simple text format (Tasker, custom)\nelse if (body.text) {\n  messageText = body.text;\n  senderName = body.sender || body.from || 'Unknown';\n  senderPhone = body.phone || '';\n}\n// Plain string body\nelse if (typeof body === 'string') {\n  messageText = body;\n}\n\n// Skip empty messages or media-only messages\nif (!messageText || messageText.trim().length < 20) {\n  return [{ json: { skip: true, reason: 'Message too short or empty' } }];\n}\n\nreturn [{\n  json: {\n    message_text: messageText,\n    sender_name: senderName,\n    sender_phone: senderPhone,\n    timestamp: timestamp,\n    source: 'whatsapp',\n    skip: false\n  }\n}];"
+      },
+      "id": "wa-parse-001",
+      "name": "Parse WhatsApp Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "wa-cond-skip",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "wa-if-skip",
+      "name": "Has Content?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash-preview-05-20",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash-preview-05-20"
+        },
+        "text": "={{ $json.message_text }}",
+        "options": {
+          "systemMessage": "You are an expert ship chartering assistant. Your task is to analyze the following WhatsApp message from a shipping broker and extract vessel specifications into a valid JSON object.\n\nThe required JSON fields are:\n- \"vessel_name\" (string, always prefix with 'MV ' if not present)\n- \"dwt\" (number, deadweight tonnage)\n- \"grt\" (number, Gross Register Tonnage)\n- \"nrt\" (number, Net Register Tonnage)\n- \"built_year\" (number)\n- \"flag\" (string)\n- \"open_port\" (string, the location where the vessel is available)\n- \"open_date\" (string, in YYYY-MM-DD format)\n- \"loa\" (number, length overall in meters)\n- \"beam\" (number, in meters)\n- \"grain_capacity\" (number, in cubic meters)\n- \"crane_details\" (string, e.g., \"4 x 30mt\")\n- \"speed_laden_knots\" (number)\n- \"consumption_laden_vlsfo\" (number, in mt/day)\n- \"speed_ballast_knots\" (number)\n- \"consumption_ballast_vlsfo\" (number, in mt/day)\n- \"port_consumption_working_vlsfo\" (number, in mt/day)\n- \"port_consumption_idle_vlsfo\" (number, in mt/day)\n- \"last_5_cargoes\" (array of strings)\n- \"owner_manager\" (string)\n- \"vetting_status\" (string)\n- \"scrubber_fitted\" (boolean)\n- \"special_features\" (array of strings)\n- \"commercial_status\" (string, e.g., \"Open\", \"On Subs\")\n- \"last_market_mention\" (string, in YYYY-MM-DD format, use today if not specified)\n\nIMPORTANT RULES:\n1. WhatsApp messages are often informal and abbreviated. Common abbreviations: DWT/DWAT=deadweight, BLT=built, PPT=prompt, OP/OPN=open, CR=cranes, LOA=length overall.\n2. If a message contains MULTIPLE vessels, return a JSON array of objects.\n3. If a message does NOT contain vessel information (e.g., greetings, general chat), return: {\"is_relevant\": false, \"vessels\": []}\n4. If a value is not present, use null.\n5. Return ONLY valid JSON. No markdown formatting, no explanation.\n6. If the message contains vessel info, return: {\"is_relevant\": true, \"vessels\": [<vessel objects>]}\n\nAnalyze this WhatsApp message:"
+        }
+      },
+      "id": "wa-gemini-001",
+      "name": "Gemini Extract Vessels",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [900, 200],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "67D4fGKFU79RJRnR",
+          "name": "contactmigassosciates gemini api in billing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and clean the Gemini AI response\nconst item = $input.item;\nlet jsonString = '';\n\n// Handle different Gemini response formats\nif (item.json.text) {\n  jsonString = item.json.text;\n} else if (item.json.content && item.json.content.parts) {\n  jsonString = item.json.content.parts[0].text;\n} else if (item.json.output) {\n  jsonString = item.json.output;\n} else {\n  jsonString = JSON.stringify(item.json);\n}\n\n// Remove markdown code block delimiters\njsonString = jsonString.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/, '')\n  .trim();\n\ntry {\n  const parsed = JSON.parse(jsonString);\n  \n  // Normalize: ensure we always have is_relevant and vessels array\n  if (Array.isArray(parsed)) {\n    return { json: { is_relevant: true, vessels: parsed } };\n  }\n  if (parsed.vessel_name) {\n    return { json: { is_relevant: true, vessels: [parsed] } };\n  }\n  return { json: parsed };\n} catch (error) {\n  return { json: { is_relevant: false, vessels: [], error: 'JSON parse failed: ' + error.message } };\n}"
+      },
+      "id": "wa-clean-001",
+      "name": "Clean JSON Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "wa-cond-relevant",
+              "leftValue": "={{ $json.is_relevant }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "wa-if-relevant",
+      "name": "Is Relevant?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split vessels array into individual items and add source metadata\nconst vessels = $input.item.json.vessels || [];\nconst senderName = $('Parse WhatsApp Message').item.json.sender_name || 'Unknown';\nconst senderPhone = $('Parse WhatsApp Message').item.json.sender_phone || '';\nconst timestamp = $('Parse WhatsApp Message').item.json.timestamp || new Date().toISOString();\n\nconst results = [];\n\nfor (const vessel of vessels) {\n  // Set source fields\n  vessel.source = 'whatsapp';\n  vessel.source_identifier = `wa-${senderPhone}-${Date.now()}`;\n  vessel.last_seen_at = timestamp;\n  vessel.first_seen_at = timestamp;\n  \n  // Use sender name as owner_manager if not provided\n  if (!vessel.owner_manager) {\n    vessel.owner_manager = senderName;\n  }\n  \n  // Clean vessel name — ensure MV prefix\n  if (vessel.vessel_name && !vessel.vessel_name.toUpperCase().startsWith('MV ')) {\n    vessel.vessel_name = 'MV ' + vessel.vessel_name;\n  }\n  \n  // Ensure vessel_name is uppercase\n  if (vessel.vessel_name) {\n    vessel.vessel_name = vessel.vessel_name.toUpperCase();\n  }\n  \n  // Convert arrays to strings for Supabase text columns\n  if (Array.isArray(vessel.last_5_cargoes)) {\n    vessel.last_5_cargoes = vessel.last_5_cargoes.join(', ');\n  }\n  if (Array.isArray(vessel.special_features)) {\n    vessel.special_features = vessel.special_features.join(', ');\n  }\n  \n  results.push({ json: vessel });\n}\n\nreturn results;"
+      },
+      "id": "wa-split-001",
+      "name": "Split & Tag Vessels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 100]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "vessels",
+        "dataToSend": "autoMapInputData",
+        "options": {
+          "conflictFields": ["vessel_name", "open_port", "open_date"]
+        }
+      },
+      "id": "wa-supabase-001",
+      "name": "Upsert to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1780, 100],
+      "credentials": {
+        "supabaseApi": {
+          "id": "baEkw0G53jEHsIBl",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "wa-noop-discard",
+      "name": "Discard Irrelevant",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1560, 320]
+    },
+    {
+      "parameters": {},
+      "id": "wa-noop-skip",
+      "name": "Skip Empty",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 420]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [[{ "node": "Parse WhatsApp Message", "type": "main", "index": 0 }]]
+    },
+    "Parse WhatsApp Message": {
+      "main": [[{ "node": "Has Content?", "type": "main", "index": 0 }]]
+    },
+    "Has Content?": {
+      "main": [
+        [{ "node": "Gemini Extract Vessels", "type": "main", "index": 0 }],
+        [{ "node": "Skip Empty", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gemini Extract Vessels": {
+      "main": [[{ "node": "Clean JSON Response", "type": "main", "index": 0 }]]
+    },
+    "Clean JSON Response": {
+      "main": [[{ "node": "Is Relevant?", "type": "main", "index": 0 }]]
+    },
+    "Is Relevant?": {
+      "main": [
+        [{ "node": "Split & Tag Vessels", "type": "main", "index": 0 }],
+        [{ "node": "Discard Irrelevant", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split & Tag Vessels": {
+      "main": [[{ "node": "Upsert to Supabase", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    { "name": "vessel-scraper" },
+    { "name": "whatsapp" }
+  ]
+}

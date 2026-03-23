@@ -1,0 +1,300 @@
+{
+  "name": "Teams Vessel Scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "minutes", "minutesInterval": 30 }
+          ]
+        }
+      },
+      "id": "teams-trigger-001",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.microsoft.com/v1.0/me/chats",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "$top", "value": "20" },
+            { "name": "$orderby", "value": "lastMessagePreview/createdDateTime desc" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "teams-get-chats",
+      "name": "Get Recent Chats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "ESO8e2dYDy40P2Sq",
+          "name": "inamu12 outlook"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract chat IDs from Microsoft Graph response\nconst chats = $input.item.json.value || [];\nconst now = new Date();\nconst thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);\n\nconst recentChats = chats.filter(chat => {\n  if (!chat.lastMessagePreview) return false;\n  const lastMsgTime = new Date(chat.lastMessagePreview.createdDateTime);\n  return lastMsgTime > thirtyMinAgo;\n});\n\nif (recentChats.length === 0) {\n  return [{ json: { skip: true, reason: 'No recent chats in last 30 min' } }];\n}\n\nreturn recentChats.map(chat => ({\n  json: {\n    chatId: chat.id,\n    chatType: chat.chatType,\n    topic: chat.topic || 'Direct Message',\n    lastMessageTime: chat.lastMessagePreview?.createdDateTime,\n    skip: false\n  }\n}));"
+      },
+      "id": "teams-filter-chats",
+      "name": "Filter Recent Chats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "teams-cond-skip",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "teams-if-skip",
+      "name": "Has Recent Chats?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.microsoft.com/v1.0/me/chats/{{ $json.chatId }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "microsoftOutlookOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "$top", "value": "10" },
+            { "name": "$orderby", "value": "createdDateTime desc" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "teams-get-msgs",
+      "name": "Get Chat Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "ESO8e2dYDy40P2Sq",
+          "name": "inamu12 outlook"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and filter Teams messages for vessel-related content\nconst messages = $input.item.json.value || [];\nconst now = new Date();\nconst thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000);\n\n// Vessel keywords to detect relevant messages\nconst vesselKeywords = ['mv ', 'm/v', 'dwt', 'dwat', 'vessel', 'open', 'ppt', 'prompt',\n  'built', 'blt', 'flag', 'crane', 'gear', 'grt', 'nrt', 'loa', 'vlsfo',\n  'supramax', 'ultramax', 'panamax', 'handymax', 'handysize', 'kamsarmax',\n  'capesize', 'bulker', 'tonnage', 'employment'];\n\nconst results = [];\n\nfor (const msg of messages) {\n  const createdTime = new Date(msg.createdDateTime);\n  if (createdTime < thirtyMinAgo) continue;\n\n  // Get message text - Teams messages come as HTML\n  let text = msg.body?.content || '';\n  // Strip HTML tags\n  text = text.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\\s+/g, ' ').trim();\n\n  if (text.length < 20) continue;\n\n  // Check if message contains vessel-related keywords\n  const lowerText = text.toLowerCase();\n  const matchCount = vesselKeywords.filter(kw => lowerText.includes(kw)).length;\n\n  if (matchCount >= 2) {\n    results.push({\n      json: {\n        message_text: text,\n        sender_name: msg.from?.user?.displayName || 'Unknown',\n        sender_email: msg.from?.user?.id || '',\n        timestamp: msg.createdDateTime,\n        message_id: msg.id,\n        source: 'teams',\n        skip: false\n      }\n    });\n  }\n}\n\nif (results.length === 0) {\n  return [{ json: { skip: true, reason: 'No vessel-related messages found' } }];\n}\n\nreturn results;"
+      },
+      "id": "teams-extract-msgs",
+      "name": "Extract Vessel Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "teams-cond-vessel",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "teams-if-vessel",
+      "name": "Has Vessel Data?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash-preview-05-20",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash-preview-05-20"
+        },
+        "text": "={{ $json.message_text }}",
+        "options": {
+          "systemMessage": "You are an expert ship chartering assistant. Your task is to analyze the following Microsoft Teams message from a shipping broker and extract vessel specifications into a valid JSON object.\n\nThe required JSON fields are:\n- \"vessel_name\" (string, always prefix with 'MV ' if not present)\n- \"dwt\" (number, deadweight tonnage)\n- \"grt\" (number, Gross Register Tonnage)\n- \"nrt\" (number, Net Register Tonnage)\n- \"built_year\" (number)\n- \"flag\" (string)\n- \"open_port\" (string, the location where the vessel is available)\n- \"open_date\" (string, in YYYY-MM-DD format)\n- \"loa\" (number, length overall in meters)\n- \"beam\" (number, in meters)\n- \"grain_capacity\" (number, in cubic meters)\n- \"crane_details\" (string, e.g., \"4 x 30mt\")\n- \"speed_laden_knots\" (number)\n- \"consumption_laden_vlsfo\" (number, in mt/day)\n- \"speed_ballast_knots\" (number)\n- \"consumption_ballast_vlsfo\" (number, in mt/day)\n- \"port_consumption_working_vlsfo\" (number, in mt/day)\n- \"port_consumption_idle_vlsfo\" (number, in mt/day)\n- \"last_5_cargoes\" (array of strings)\n- \"owner_manager\" (string)\n- \"vetting_status\" (string)\n- \"scrubber_fitted\" (boolean)\n- \"special_features\" (array of strings)\n- \"commercial_status\" (string, e.g., \"Open\", \"On Subs\")\n- \"last_market_mention\" (string, in YYYY-MM-DD format, use today if not specified)\n\nIMPORTANT RULES:\n1. Teams messages may contain HTML remnants. Ignore any formatting tags.\n2. Common abbreviations: DWT/DWAT=deadweight, BLT=built, PPT=prompt, OP/OPN=open, CR=cranes.\n3. If a message contains MULTIPLE vessels, return a JSON array of objects.\n4. If a message does NOT contain vessel information, return: {\"is_relevant\": false, \"vessels\": []}\n5. If a value is not present, use null.\n6. Return ONLY valid JSON. No markdown formatting, no explanation.\n7. If the message contains vessel info, return: {\"is_relevant\": true, \"vessels\": [<vessel objects>]}\n\nAnalyze this Teams message:"
+        }
+      },
+      "id": "teams-gemini-001",
+      "name": "Gemini Extract Vessels",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [1780, 100],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "67D4fGKFU79RJRnR",
+          "name": "contactmigassosciates gemini api in billing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and clean the Gemini AI response\nconst item = $input.item;\nlet jsonString = '';\n\nif (item.json.text) {\n  jsonString = item.json.text;\n} else if (item.json.content && item.json.content.parts) {\n  jsonString = item.json.content.parts[0].text;\n} else if (item.json.output) {\n  jsonString = item.json.output;\n} else {\n  jsonString = JSON.stringify(item.json);\n}\n\njsonString = jsonString.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/, '')\n  .trim();\n\ntry {\n  const parsed = JSON.parse(jsonString);\n  if (Array.isArray(parsed)) {\n    return { json: { is_relevant: true, vessels: parsed } };\n  }\n  if (parsed.vessel_name) {\n    return { json: { is_relevant: true, vessels: [parsed] } };\n  }\n  return { json: parsed };\n} catch (error) {\n  return { json: { is_relevant: false, vessels: [], error: 'JSON parse failed: ' + error.message } };\n}"
+      },
+      "id": "teams-clean-001",
+      "name": "Clean JSON Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "teams-cond-relevant",
+              "leftValue": "={{ $json.is_relevant }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "teams-if-relevant",
+      "name": "Is Relevant?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2220, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split vessels array into individual items with source metadata\nconst vessels = $input.item.json.vessels || [];\nconst senderName = $('Extract Vessel Messages').item.json.sender_name || 'Unknown';\nconst messageId = $('Extract Vessel Messages').item.json.message_id || '';\nconst timestamp = $('Extract Vessel Messages').item.json.timestamp || new Date().toISOString();\n\nconst results = [];\n\nfor (const vessel of vessels) {\n  vessel.source = 'teams';\n  vessel.source_identifier = `teams-${messageId}`;\n  vessel.last_seen_at = timestamp;\n  vessel.first_seen_at = timestamp;\n  \n  if (!vessel.owner_manager) {\n    vessel.owner_manager = senderName;\n  }\n  \n  if (vessel.vessel_name && !vessel.vessel_name.toUpperCase().startsWith('MV ')) {\n    vessel.vessel_name = 'MV ' + vessel.vessel_name;\n  }\n  if (vessel.vessel_name) {\n    vessel.vessel_name = vessel.vessel_name.toUpperCase();\n  }\n  \n  if (Array.isArray(vessel.last_5_cargoes)) {\n    vessel.last_5_cargoes = vessel.last_5_cargoes.join(', ');\n  }\n  if (Array.isArray(vessel.special_features)) {\n    vessel.special_features = vessel.special_features.join(', ');\n  }\n  \n  results.push({ json: vessel });\n}\n\nreturn results;"
+      },
+      "id": "teams-split-001",
+      "name": "Split & Tag Vessels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, 0]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "vessels",
+        "dataToSend": "autoMapInputData",
+        "options": {
+          "conflictFields": ["vessel_name", "open_port", "open_date"]
+        }
+      },
+      "id": "teams-supabase-001",
+      "name": "Upsert to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2660, 0],
+      "credentials": {
+        "supabaseApi": {
+          "id": "baEkw0G53jEHsIBl",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "teams-noop-1",
+      "name": "No Recent Chats",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1120, 420]
+    },
+    {
+      "parameters": {},
+      "id": "teams-noop-2",
+      "name": "No Vessel Messages",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1780, 320]
+    },
+    {
+      "parameters": {},
+      "id": "teams-noop-3",
+      "name": "Discard Irrelevant",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2440, 220]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Get Recent Chats", "type": "main", "index": 0 }]]
+    },
+    "Get Recent Chats": {
+      "main": [[{ "node": "Filter Recent Chats", "type": "main", "index": 0 }]]
+    },
+    "Filter Recent Chats": {
+      "main": [[{ "node": "Has Recent Chats?", "type": "main", "index": 0 }]]
+    },
+    "Has Recent Chats?": {
+      "main": [
+        [{ "node": "Get Chat Messages", "type": "main", "index": 0 }],
+        [{ "node": "No Recent Chats", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Chat Messages": {
+      "main": [[{ "node": "Extract Vessel Messages", "type": "main", "index": 0 }]]
+    },
+    "Extract Vessel Messages": {
+      "main": [[{ "node": "Has Vessel Data?", "type": "main", "index": 0 }]]
+    },
+    "Has Vessel Data?": {
+      "main": [
+        [{ "node": "Gemini Extract Vessels", "type": "main", "index": 0 }],
+        [{ "node": "No Vessel Messages", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gemini Extract Vessels": {
+      "main": [[{ "node": "Clean JSON Response", "type": "main", "index": 0 }]]
+    },
+    "Clean JSON Response": {
+      "main": [[{ "node": "Is Relevant?", "type": "main", "index": 0 }]]
+    },
+    "Is Relevant?": {
+      "main": [
+        [{ "node": "Split & Tag Vessels", "type": "main", "index": 0 }],
+        [{ "node": "Discard Irrelevant", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split & Tag Vessels": {
+      "main": [[{ "node": "Upsert to Supabase", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    { "name": "vessel-scraper" },
+    { "name": "teams" }
+  ]
+}

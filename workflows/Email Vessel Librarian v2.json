@@ -1,0 +1,210 @@
+{
+  "name": "Email Vessel Librarian v2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "hours", "hoursInterval": 1 }
+          ]
+        }
+      },
+      "id": "email-trigger-001",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 20,
+        "filters": {
+          "folderId": "inbox",
+          "readStatus": "unread",
+          "custom": "contains(subject, 'MV')"
+        },
+        "output": "raw"
+      },
+      "id": "email-outlook-001",
+      "name": "Get Unread Emails",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "ESO8e2dYDy40P2Sq",
+          "name": "inamu12 outlook"
+        }
+      },
+      "webhookId": "bf7922de-272a-4900-a6ed-8ab97c89a11d"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash-preview-05-20",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash-preview-05-20"
+        },
+        "text": "={{ $json.body.content }}",
+        "options": {
+          "systemMessage": "You are an expert ship chartering assistant. Your task is to analyze the following email content and extract the key vessel specifications into a valid JSON object.\n\nThe required JSON fields are:\n- \"vessel_name\" (string, always prefix with 'MV ' if not present, never use M/V)\n- \"dwt\" (number)\n- \"grt\" (number, Gross Register Tonnage)\n- \"nrt\" (number, Net Register Tonnage)\n- \"built_year\" (number)\n- \"flag\" (string)\n- \"open_port\" (string, the location where the vessel is available)\n- \"open_date\" (string, in YYYY-MM-DD format)\n- \"loa\" (number, length overall)\n- \"beam\" (number)\n- \"grain_capacity\" (number)\n- \"crane_details\" (string, e.g., \"4 x 30mt\")\n- \"speed_laden_knots\" (number)\n- \"consumption_laden_vlsfo\" (number, in mt/day)\n- \"speed_ballast_knots\" (number)\n- \"consumption_ballast_vlsfo\" (number, in mt/day)\n- \"port_consumption_working_vlsfo\" (number, in mt/day)\n- \"port_consumption_idle_vlsfo\" (number, in mt/day)\n- \"last_5_cargoes\" (array of strings)\n- \"owner_manager\" (string)\n- \"vetting_status\" (string, e.g., \"RightShip Approved\")\n- \"scrubber_fitted\" (boolean, true or false)\n- \"special_features\" (array of strings)\n- \"commercial_status\" (string, e.g., \"Open\", \"On Subs\")\n- \"last_market_mention\" (string, in YYYY-MM-DD format)\n\nIMPORTANT RULES:\n1. If a message contains MULTIPLE vessels, return: {\"is_relevant\": true, \"vessels\": [<vessel objects>]}\n2. If a message contains a SINGLE vessel, still wrap it: {\"is_relevant\": true, \"vessels\": [<vessel object>]}\n3. If the email does NOT contain vessel information, return: {\"is_relevant\": false, \"vessels\": []}\n4. If a value is not clearly present in the email, use null for that field. Do not make up information.\n5. Return ONLY valid JSON. No markdown code blocks, no explanation text.\n\nHere is the email body to analyze:"
+        }
+      },
+      "id": "email-gemini-001",
+      "name": "Gemini Extract Vessels",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "67D4fGKFU79RJRnR",
+          "name": "contactmigassosciates gemini api in billing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse and clean the Gemini AI response\nconst item = $input.item;\nlet jsonString = '';\n\nif (item.json.text) {\n  jsonString = item.json.text;\n} else if (item.json.content && item.json.content.parts) {\n  jsonString = item.json.content.parts[0].text;\n} else if (item.json.output) {\n  jsonString = item.json.output;\n} else {\n  jsonString = JSON.stringify(item.json);\n}\n\njsonString = jsonString.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/, '')\n  .trim();\n\ntry {\n  const parsed = JSON.parse(jsonString);\n  // Normalize to always have is_relevant + vessels array\n  if (Array.isArray(parsed)) {\n    return { json: { is_relevant: true, vessels: parsed } };\n  }\n  if (parsed.vessel_name) {\n    return { json: { is_relevant: true, vessels: [parsed] } };\n  }\n  if (parsed.vessels) {\n    return { json: parsed };\n  }\n  // Old format: single vessel object without wrapper\n  return { json: { is_relevant: true, vessels: [parsed] } };\n} catch (error) {\n  return { json: { is_relevant: false, vessels: [], error: 'JSON parse failed: ' + error.message } };\n}"
+      },
+      "id": "email-clean-001",
+      "name": "Clean JSON Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "email-cond-relevant",
+              "leftValue": "={{ $json.is_relevant }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "email-if-relevant",
+      "name": "Is Relevant?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split vessels array into individual items with source=email metadata\nconst vessels = $input.item.json.vessels || [];\n\n// Get sender info from the original email\nconst emailData = $('Get Unread Emails').item.json;\nconst senderName = emailData.from?.emailAddress?.name || emailData.sender?.emailAddress?.name || 'Unknown Sender';\nconst senderEmail = emailData.from?.emailAddress?.address || emailData.sender?.emailAddress?.address || '';\nconst emailSubject = emailData.subject || '';\nconst emailId = emailData.id || '';\nconst receivedTime = emailData.receivedDateTime || new Date().toISOString();\n\nconst results = [];\n\nfor (const vessel of vessels) {\n  // Set source fields\n  vessel.source = 'email';\n  vessel.source_identifier = `email-${emailId}`;\n  vessel.last_seen_at = receivedTime;\n  vessel.first_seen_at = receivedTime;\n  \n  // Use sender as owner_manager if not extracted\n  if (!vessel.owner_manager || vessel.owner_manager === 'Unknown') {\n    vessel.owner_manager = senderName;\n  }\n  \n  // Clean vessel name\n  if (vessel.vessel_name && !vessel.vessel_name.toUpperCase().startsWith('MV ')) {\n    vessel.vessel_name = 'MV ' + vessel.vessel_name;\n  }\n  if (vessel.vessel_name) {\n    vessel.vessel_name = vessel.vessel_name.toUpperCase();\n  }\n  \n  // Convert arrays to strings for Supabase text columns\n  if (Array.isArray(vessel.last_5_cargoes)) {\n    vessel.last_5_cargoes = vessel.last_5_cargoes.join(', ');\n  }\n  if (Array.isArray(vessel.special_features)) {\n    vessel.special_features = vessel.special_features.join(', ');\n  }\n  \n  // Infer region from open_port\n  const port = (vessel.open_port || '').toLowerCase();\n  if (['mumbai', 'kandla', 'mundra', 'goa', 'dahej', 'hazira'].some(p => port.includes(p))) {\n    vessel.region = 'WCI';\n  } else if (['vizag', 'kakinada', 'gangavaram', 'krishnapatnam', 'paradip', 'haldia', 'kolkata'].some(p => port.includes(p))) {\n    vessel.region = 'ECI';\n  } else if (['singapore', 'johor'].some(p => port.includes(p))) {\n    vessel.region = 'SE Asia';\n  } else if (['shanghai', 'qingdao', 'tianjin', 'ningbo', 'guangzhou'].some(p => port.includes(p))) {\n    vessel.region = 'CHN';\n  } else if (['busan', 'ulsan', 'incheon'].some(p => port.includes(p))) {\n    vessel.region = 'KOR';\n  } else if (['tokyo', 'osaka', 'nagoya', 'yokohama'].some(p => port.includes(p))) {\n    vessel.region = 'JPN';\n  } else if (['jebel ali', 'fujairah', 'muscat', 'jeddah', 'dammam'].some(p => port.includes(p))) {\n    vessel.region = 'AG';\n  } else if (['karachi', 'port qasim'].some(p => port.includes(p))) {\n    vessel.region = 'AG';\n  } else if (['durban', 'richards bay', 'maputo', 'dar es salaam', 'mombasa'].some(p => port.includes(p))) {\n    vessel.region = 'E. Africa';\n  } else if (['santos', 'paranagua', 'rio grande'].some(p => port.includes(p))) {\n    vessel.region = 'ECSA';\n  } else if (['rotterdam', 'amsterdam', 'antwerp', 'hamburg'].some(p => port.includes(p))) {\n    vessel.region = 'EMED';\n  }\n  \n  // Infer vessel_type from DWT\n  if (vessel.dwt && !vessel.vessel_type) {\n    const dwt = vessel.dwt;\n    if (dwt < 20000) vessel.vessel_type = 'Mini Bulkers';\n    else if (dwt < 40000) vessel.vessel_type = 'Handy Size';\n    else if (dwt < 55000) vessel.vessel_type = 'Handymax';\n    else if (dwt < 65000) vessel.vessel_type = 'Supramax';\n    else if (dwt < 82000) vessel.vessel_type = 'Ultramax';\n    else if (dwt < 100000) vessel.vessel_type = 'Panamax';\n    else if (dwt < 120000) vessel.vessel_type = 'Kamsarmax';\n    else if (dwt < 180000) vessel.vessel_type = 'Mini Cape';\n    else if (dwt < 400000) vessel.vessel_type = 'Capesize';\n    else vessel.vessel_type = 'VLOC';\n  }\n  \n  results.push({ json: vessel });\n}\n\nreturn results;"
+      },
+      "id": "email-split-001",
+      "name": "Split & Tag Vessels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "tableId": "vessels",
+        "dataToSend": "autoMapInputData",
+        "options": {
+          "conflictFields": ["vessel_name", "open_port", "open_date"]
+        }
+      },
+      "id": "email-supabase-001",
+      "name": "Upsert to Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1560, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "baEkw0G53jEHsIBl",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "update",
+        "messageId": "={{ $('Get Unread Emails').item.json.id }}",
+        "updateFields": {
+          "isRead": true
+        }
+      },
+      "id": "email-mark-read",
+      "name": "Mark Email Read",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [1780, 200],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "ESO8e2dYDy40P2Sq",
+          "name": "inamu12 outlook"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "update",
+        "messageId": "={{ $('Get Unread Emails').item.json.id }}",
+        "updateFields": {
+          "isRead": true
+        }
+      },
+      "id": "email-mark-read-irrelevant",
+      "name": "Mark Irrelevant Read",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [1340, 420],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "ESO8e2dYDy40P2Sq",
+          "name": "inamu12 outlook"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Get Unread Emails", "type": "main", "index": 0 }]]
+    },
+    "Get Unread Emails": {
+      "main": [[{ "node": "Gemini Extract Vessels", "type": "main", "index": 0 }]]
+    },
+    "Gemini Extract Vessels": {
+      "main": [[{ "node": "Clean JSON Response", "type": "main", "index": 0 }]]
+    },
+    "Clean JSON Response": {
+      "main": [[{ "node": "Is Relevant?", "type": "main", "index": 0 }]]
+    },
+    "Is Relevant?": {
+      "main": [
+        [{ "node": "Split & Tag Vessels", "type": "main", "index": 0 }],
+        [{ "node": "Mark Irrelevant Read", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split & Tag Vessels": {
+      "main": [[{ "node": "Upsert to Supabase", "type": "main", "index": 0 }]]
+    },
+    "Upsert to Supabase": {
+      "main": [[{ "node": "Mark Email Read", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    { "name": "vessel-scraper" },
+    { "name": "email" }
+  ]
+}
