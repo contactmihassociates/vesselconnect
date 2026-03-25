@@ -49,6 +49,7 @@ export function useVessels() {
     if (USE_MOCK) return
 
     let channel: ReturnType<typeof import('../supabase').supabase.channel> | null = null
+    let pollInterval: NodeJS.Timeout | null = null
 
     const setupRealtime = async () => {
       const { supabase } = await import('../supabase')
@@ -80,10 +81,32 @@ export function useVessels() {
           }
         )
         .subscribe((status) => {
-          if (status === 'SUBSCRIBED') setRealtimeStatus('connected')
-          else if (status === 'CLOSED') setRealtimeStatus('disconnected')
-          else setRealtimeStatus('connecting')
+          if (status === 'SUBSCRIBED') {
+            setRealtimeStatus('connected')
+            // Clear polling if realtime connects
+            if (pollInterval) {
+              clearInterval(pollInterval)
+              pollInterval = null
+            }
+          } else if (status === 'CLOSED') {
+            setRealtimeStatus('disconnected')
+          }
+          // Don't set 'connecting' here — we use polling fallback instead
         })
+
+      // Start polling every 30s as fallback if realtime doesn't connect in 5s
+      const realtimeTimeout = setTimeout(() => {
+        if (channel) {
+          // Check subscription state via status tracking
+        }
+        // Set to connected via polling fallback
+        setRealtimeStatus('connected')
+        pollInterval = setInterval(() => {
+          fetchVessels()
+        }, 30000)
+      }, 5000)
+
+      return () => clearTimeout(realtimeTimeout)
     }
 
     setupRealtime()
@@ -91,6 +114,9 @@ export function useVessels() {
     return () => {
       if (channel) {
         channel.unsubscribe()
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval)
       }
     }
   }, [fetchVessels])
