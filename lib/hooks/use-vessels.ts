@@ -26,10 +26,12 @@ export function useVessels() {
 
     try {
       const { supabase } = await import('../supabase')
+      const today = new Date().toISOString().split('T')[0]
       const { data, error: fetchError } = await supabase
         .from('vessels')
         .select('*')
-        .order('last_seen_at', { ascending: false })
+        .gte('open_date', today)
+        .order('open_date', { ascending: true })
 
       if (fetchError) throw fetchError
       setVessels(data ?? [])
@@ -59,9 +61,12 @@ export function useVessels() {
           (payload) => {
             if (payload.eventType === 'INSERT') {
               setVessels((prev) => {
-                const exists = prev.some((v) => v.id === (payload.new as Vessel).id)
+                const newVessel = payload.new as Vessel
+                const today = new Date().toISOString().split('T')[0]
+                if (!newVessel.open_date || newVessel.open_date < today) return prev
+                const exists = prev.some((v) => v.id === newVessel.id)
                 if (exists) return prev
-                return [payload.new as Vessel, ...prev]
+                return [newVessel, ...prev]
               })
             } else if (payload.eventType === 'UPDATE') {
               setVessels((prev) =>
