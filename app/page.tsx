@@ -33,9 +33,6 @@ export default function HomePage() {
 
   return (
     <main className="flex-1 max-w-[1600px] mx-auto w-full px-6 py-6 space-y-5">
-      {/* Stats row */}
-      <StatsCards stats={stats} />
-
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="flex-1">
@@ -45,7 +42,7 @@ export default function HomePage() {
         <LiveIndicator status={realtimeStatus} />
       </div>
 
-      {/* Main content */}
+      {/* Main content — vessel list + filters */}
       <div className="flex gap-5 items-start">
         {/* Table */}
         <div className="flex-1 min-w-0 space-y-3">
@@ -72,6 +69,9 @@ export default function HomePage() {
           filteredCount={filteredVessels.length}
         />
       </div>
+
+      {/* Stats — secondary info at the bottom */}
+      <StatsCards stats={stats} />
     </main>
   )
 }

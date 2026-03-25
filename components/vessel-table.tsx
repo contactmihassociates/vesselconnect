@@ -83,9 +83,9 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
         <Table>
           <TableHeader>
             <TableRow className="border-slate-700/50 hover:bg-transparent">
-              <SortHead label="Vessel Name" sortKey="vessel_name" current={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortHead label="DWT" sortKey="dwt" current={sortKey} dir={sortDir} onSort={handleSort} />
-              <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Type</TableHead>
+              <SortHead label="Vessel Name" sortKey="vessel_name" current={sortKey} dir={sortDir} onSort={handleSort} primary />
+              <SortHead label="DWT" sortKey="dwt" current={sortKey} dir={sortDir} onSort={handleSort} primary />
+              <TableHead className="text-sky-400 text-sm font-bold uppercase tracking-wider">Type</TableHead>
               <SortHead label="Open Date" sortKey="open_date" current={sortKey} dir={sortDir} onSort={handleSort} />
               <SortHead label="Open Port" sortKey="open_port" current={sortKey} dir={sortDir} onSort={handleSort} />
               <SortHead label="Region" sortKey="region" current={sortKey} dir={sortDir} onSort={handleSort} />
@@ -97,19 +97,18 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
             {paged.map((vessel) => (
               <TableRow
                 key={vessel.id}
-                className="border-slate-700/30 hover:bg-slate-700/30 cursor-pointer transition-colors"
+                className="border-slate-700/30 hover:bg-sky-950/40 cursor-pointer transition-colors group"
                 onClick={() => openDetail(vessel)}
               >
-                <TableCell className="font-medium text-sky-300 text-sm">
+                <TableCell className="font-bold text-white text-base group-hover:text-sky-300 transition-colors py-4">
                   {vessel.vessel_name}
                 </TableCell>
-                <TableCell className="text-slate-300 text-sm tabular-nums">
+                <TableCell className="text-sky-200 text-base font-semibold tabular-nums py-4">
                   {formatDWT(vessel.dwt)}
                 </TableCell>
-                <TableCell>
+                <TableCell className="py-4">
                   <Badge
-                    variant="outline"
-                    className="border-slate-600/50 text-slate-400 text-xs bg-slate-700/30"
+                    className="bg-sky-500/20 border border-sky-500/40 text-sky-300 text-sm font-semibold px-3 py-1"
                   >
                     {vessel.vessel_type ?? inferVesselType(vessel.dwt)}
                   </Badge>
@@ -181,29 +180,31 @@ function SortHead({
   current,
   dir,
   onSort,
+  primary,
 }: {
   label: string
   sortKey: SortKey
   current: SortKey
   dir: SortDir
   onSort: (key: SortKey) => void
+  primary?: boolean
 }) {
   const isActive = current === sortKey
   return (
-    <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
+    <TableHead className={primary ? 'text-sky-400 text-sm font-bold uppercase tracking-wider' : 'text-slate-400 text-xs font-semibold uppercase tracking-wider'}>
       <button
-        className="flex items-center gap-1 hover:text-slate-200 transition-colors"
+        className="flex items-center gap-1 hover:text-white transition-colors"
         onClick={() => onSort(sortKey)}
       >
         {label}
         {isActive ? (
           dir === 'asc' ? (
-            <ChevronUp className="h-3 w-3" />
+            <ChevronUp className={primary ? 'h-4 w-4' : 'h-3 w-3'} />
           ) : (
-            <ChevronDown className="h-3 w-3" />
+            <ChevronDown className={primary ? 'h-4 w-4' : 'h-3 w-3'} />
           )
         ) : (
-          <ChevronsUpDown className="h-3 w-3 opacity-40" />
+          <ChevronsUpDown className={primary ? 'h-4 w-4 opacity-50' : 'h-3 w-3 opacity-40'} />
         )}
       </button>
     </TableHead>
