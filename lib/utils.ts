@@ -77,7 +77,7 @@ export function exportToCSV(vessels: Vessel[], filename = 'vessels.csv') {
   const rows = vessels.map((v) => [
     v.vessel_name,
     v.dwt ?? '',
-    v.vessel_type ?? inferVesselType(v.dwt),
+    inferVesselType(v.dwt),
     v.open_date ? formatDate(v.open_date) : '',
     v.open_port ?? '',
     v.region ?? '',
@@ -107,16 +107,45 @@ export function exportToCSV(vessels: Vessel[], filename = 'vessels.csv') {
   URL.revokeObjectURL(url)
 }
 
+export function inferRegionFromPort(port: string | null): string | null {
+  if (!port) return null
+  const p = port.toLowerCase()
+  if (/mumbai|kandla|mundra|goa|dahej|hazira|navlakhi|pipavav|okha/.test(p)) return 'WCI'
+  if (/vizag|visakhapatnam|kakinada|gangavaram|krishnapatnam|paradip|haldia|kolkata|dhamra/.test(p)) return 'ECI'
+  if (/singapore|johor|port klang|klang|penang|lumut|pasir gudang/.test(p)) return 'SE Asia'
+  if (/shanghai|qingdao|tianjin|ningbo|guangzhou|guangdong|dalian|zhanjiang|lianyungang|yangpu/.test(p)) return 'CHN'
+  if (/busan|ulsan|incheon|pyeongtaek/.test(p)) return 'KOR'
+  if (/tokyo|osaka|nagoya|yokohama|kobe/.test(p)) return 'JPN'
+  if (/jebel ali|dubai|fujairah|muscat|jeddah|dammam|ras al khaimah|abu dhabi|sohar|salalah|karachi|port qasim/.test(p)) return 'AG'
+  if (/durban|richards bay|maputo|dar es salaam|mombasa|beira|nacala/.test(p)) return 'E. Africa'
+  if (/santos|paranagua|rio grande|recife|fortaleza|itaqui|praia mole/.test(p)) return 'ECSA'
+  if (/rotterdam|amsterdam|antwerp|hamburg|ghent|bremen|dunkirk|le havre/.test(p)) return 'EMED'
+  if (/chittagong|mongla/.test(p)) return 'ECI'
+  if (/bangkok|laem chabang|songkhla|thailand/.test(p)) return 'SE Asia'
+  if (/manila|subic|cebu|philippines/.test(p)) return 'SE Asia'
+  if (/jakarta|surabaya|kalimantan|indonesia/.test(p)) return 'SE Asia'
+  if (/ho chi minh|haiphong|vietnam/.test(p)) return 'SE Asia'
+  if (/colombo|sri lanka/.test(p)) return 'ECI'
+  if (/yangon|myanmar/.test(p)) return 'SE Asia'
+  if (/taiwan|kaohsiung|keelung/.test(p)) return 'CJK'
+  if (/vladivostok|nakhodka|vostochny/.test(p)) return 'NOPAC'
+  if (/west africa|dakar|tema|lomé|lome|abidjan|lagos|port harcourt|apapa/.test(p)) return 'WC Africa'
+  if (/bunbury|port hedland|dampier|geraldton|fremantle|newcastle|port kembla|wollongong|brisbane|gladstone|hay point|abbot point/.test(p)) return 'NOPAC'
+  if (/vancouver|prince rupert|portland|seattle/.test(p)) return 'NOPAC'
+  if (/fareast|far east/.test(p)) return 'FE'
+  return null
+}
+
 export function applyFilters(vessels: Vessel[], filters: FilterState): Vessel[] {
   return vessels.filter((v) => {
     if (
       filters.search &&
-      !v.vessel_name.toLowerCase().includes(filters.search.toLowerCase())
+      !(v.vessel_name ?? '').toLowerCase().includes(filters.search.toLowerCase())
     ) {
       return false
     }
     if (filters.vesselTypes.length > 0) {
-      const type = v.vessel_type ?? inferVesselType(v.dwt)
+      const type = inferVesselType(v.dwt)
       if (!filters.vesselTypes.includes(type as never)) return false
     }
     if (filters.regions.length > 0) {

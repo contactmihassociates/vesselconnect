@@ -27,12 +27,6 @@ export function LiveIndicator({ status }: LiveIndicatorProps) {
       text: 'text-red-400',
       label: 'Offline',
     },
-    mock: {
-      dot: 'bg-sky-400',
-      ping: '',
-      text: 'text-sky-400',
-      label: 'Demo Mode',
-    },
   }[status]
 
   return (

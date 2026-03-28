@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { Vessel } from '../types'
-import { MOCK_VESSELS } from '../mock-data'
+import { inferRegionFromPort, inferVesselType } from '../utils'
 
-const USE_MOCK =
-  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL === 'your-supabase-url'
+export type RealtimeStatus = 'connecting' | 'connected' | 'disconnected'
 
-export type RealtimeStatus = 'connecting' | 'connected' | 'disconnected' | 'mock'
+function enrichVessel(v: Vessel): Vessel {
+  return {
+    ...v,
+    region: v.region ?? inferRegionFromPort(v.open_port),
+    vessel_type: inferVesselType(v.dwt) as Vessel['vessel_type'],
+  }
+}
 
 export function useVessels() {
   const [vessels, setVessels] = useState<Vessel[]>([])
@@ -17,13 +21,6 @@ export function useVessels() {
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('connecting')
 
   const fetchVessels = useCallback(async () => {
-    if (USE_MOCK) {
-      setVessels(MOCK_VESSELS)
-      setLoading(false)
-      setRealtimeStatus('mock')
-      return
-    }
-
     try {
       const { supabase } = await import('../supabase')
       const today = new Date().toISOString().split('T')[0]
@@ -34,10 +31,10 @@ export function useVessels() {
         .order('open_date', { ascending: true })
 
       if (fetchError) throw fetchError
-      setVessels(data ?? [])
+      setVessels((data ?? []).map(enrichVessel))
+      setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch vessels')
-      setVessels(MOCK_VESSELS)
     } finally {
       setLoading(false)
     }
@@ -45,8 +42,6 @@ export function useVessels() {
 
   useEffect(() => {
     fetchVessels()
-
-    if (USE_MOCK) return
 
     let channel: ReturnType<typeof import('../supabase').supabase.channel> | null = null
     let pollInterval: NodeJS.Timeout | null = null
@@ -62,7 +57,7 @@ export function useVessels() {
           (payload) => {
             if (payload.eventType === 'INSERT') {
               setVessels((prev) => {
-                const newVessel = payload.new as Vessel
+                const newVessel = enrichVessel(payload.new as Vessel)
                 const today = new Date().toISOString().split('T')[0]
                 if (!newVessel.open_date || newVessel.open_date < today) return prev
                 const exists = prev.some((v) => v.id === newVessel.id)
@@ -72,7 +67,7 @@ export function useVessels() {
             } else if (payload.eventType === 'UPDATE') {
               setVessels((prev) =>
                 prev.map((v) =>
-                  v.id === (payload.new as Vessel).id ? (payload.new as Vessel) : v
+                  v.id === (payload.new as Vessel).id ? enrichVessel(payload.new as Vessel) : v
                 )
               )
             } else if (payload.eventType === 'DELETE') {
@@ -83,7 +78,6 @@ export function useVessels() {
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
             setRealtimeStatus('connected')
-            // Clear polling if realtime connects
             if (pollInterval) {
               clearInterval(pollInterval)
               pollInterval = null
@@ -91,15 +85,10 @@ export function useVessels() {
           } else if (status === 'CLOSED') {
             setRealtimeStatus('disconnected')
           }
-          // Don't set 'connecting' here — we use polling fallback instead
         })
 
-      // Start polling every 30s as fallback if realtime doesn't connect in 5s
+      // Polling fallback if realtime doesn't connect within 5s
       const realtimeTimeout = setTimeout(() => {
-        if (channel) {
-          // Check subscription state via status tracking
-        }
-        // Set to connected via polling fallback
         setRealtimeStatus('connected')
         pollInterval = setInterval(() => {
           fetchVessels()

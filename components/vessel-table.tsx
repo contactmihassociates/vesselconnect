@@ -101,7 +101,7 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
                 onClick={() => openDetail(vessel)}
               >
                 <TableCell className="font-bold text-white text-base group-hover:text-sky-300 transition-colors py-4">
-                  {vessel.vessel_name}
+                  {vessel.vessel_name ?? <span className="text-slate-500 italic font-normal text-sm">(Unknown)</span>}
                 </TableCell>
                 <TableCell className="text-sky-200 text-base font-semibold tabular-nums py-4">
                   {formatDWT(vessel.dwt)}
@@ -110,7 +110,7 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
                   <Badge
                     className="bg-sky-500/20 border border-sky-500/40 text-sky-300 text-sm font-semibold px-3 py-1"
                   >
-                    {vessel.vessel_type ?? inferVesselType(vessel.dwt)}
+                    {inferVesselType(vessel.dwt)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-slate-300 text-sm tabular-nums">
