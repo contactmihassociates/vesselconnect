@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Ship, Anchor, Gauge, Package, Building2, Calendar, MapPin } from 'lucide-react'
 import type { Vessel } from '@/lib/types'
-import { formatDate, formatDWT, getSourceLabel, getSourceColor, inferVesselType } from '@/lib/utils'
+import { formatDate, formatDWT, getSourceLabel, inferVesselType } from '@/lib/utils'
 
 interface VesselDetailModalProps {
   vessel: Vessel | null
@@ -30,42 +30,56 @@ function parseJsonArray(value: string | null): string[] {
   return value.split(',').map((s) => s.trim()).filter(Boolean)
 }
 
+function sourceStyle(source: string | null | undefined) {
+  const map: Record<string, { bg: string; text: string; border: string }> = {
+    email:    { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' },
+    whatsapp: { bg: '#F0FDF4', text: '#15803D', border: '#BBF7D0' },
+    teams:    { bg: '#F5F3FF', text: '#6D28D9', border: '#DDD6FE' },
+  }
+  return map[source ?? ''] ?? { bg: '#F5F5F5', text: '#6B7280', border: '#E5E7EB' }
+}
+
 export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailModalProps) {
   if (!vessel) return null
 
   const vesselType = inferVesselType(vessel.dwt)
+  const src = sourceStyle(vessel.source)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-slate-900 border-slate-700 text-slate-100 p-0 gap-0">
+      <DialogContent className="max-w-2xl bg-white border-[#E8E5DF] text-[#0D0D0D] p-0 gap-0 rounded-2xl shadow-xl">
         <DialogHeader className="p-6 pb-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <DialogTitle className="text-xl font-bold text-white tracking-wide">
+              <DialogTitle
+                className="text-2xl font-bold text-[#0D0D0D] tracking-tight"
+                style={{ fontFamily: 'var(--font-space-grotesk)' }}
+              >
                 {vessel.vessel_name ?? '(Vessel Name Unknown)'}
               </DialogTitle>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Badge className="bg-sky-500/20 text-sky-300 border-sky-500/30 text-xs">
+              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                <Badge className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#1D4ED8] text-xs font-semibold">
                   {vesselType}
                 </Badge>
                 {vessel.flag && (
-                  <Badge variant="outline" className="border-slate-600 text-slate-400 text-xs">
+                  <Badge variant="outline" className="border-[#E8E5DF] text-[#757575] text-xs">
                     {vessel.flag}
                   </Badge>
                 )}
                 {vessel.built_year && (
-                  <Badge variant="outline" className="border-slate-600 text-slate-400 text-xs">
+                  <Badge variant="outline" className="border-[#E8E5DF] text-[#757575] text-xs">
                     Built {vessel.built_year}
                   </Badge>
                 )}
                 <Badge
                   variant="outline"
-                  className={`text-xs border ${getSourceColor(vessel.source)}`}
+                  className="text-xs font-medium"
+                  style={{ backgroundColor: src.bg, color: src.text, borderColor: src.border }}
                 >
                   {getSourceLabel(vessel.source)}
                 </Badge>
                 {vessel.scrubber_fitted && (
-                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs">
+                  <Badge className="bg-[#F0FDF4] border border-[#BBF7D0] text-[#15803D] text-xs">
                     Scrubber
                   </Badge>
                 )}
@@ -74,12 +88,12 @@ export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailMo
           </div>
         </DialogHeader>
 
-        <Separator className="bg-slate-700/50" />
+        <Separator className="bg-[#E8E5DF]" />
 
         <ScrollArea className="max-h-[60vh]">
           <div className="p-6 space-y-6">
             {/* Position */}
-            <Section icon={<MapPin className="h-4 w-4 text-sky-400" />} title="Current Position">
+            <Section icon={<MapPin className="h-4 w-4 text-[#1A56DB]" />} title="Current Position">
               <Grid>
                 <Field label="Open Port" value={vessel.open_port} />
                 <Field label="Open Date" value={formatDate(vessel.open_date)} />
@@ -89,7 +103,7 @@ export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailMo
             </Section>
 
             {/* Dimensions */}
-            <Section icon={<Ship className="h-4 w-4 text-sky-400" />} title="Dimensions">
+            <Section icon={<Ship className="h-4 w-4 text-[#1A56DB]" />} title="Dimensions">
               <Grid>
                 <Field label="DWT" value={vessel.dwt ? `${formatDWT(vessel.dwt)} MT` : null} />
                 <Field label="GRT" value={vessel.grt ? formatDWT(vessel.grt) : null} />
@@ -104,7 +118,7 @@ export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailMo
             </Section>
 
             {/* Equipment */}
-            <Section icon={<Anchor className="h-4 w-4 text-sky-400" />} title="Equipment">
+            <Section icon={<Anchor className="h-4 w-4 text-[#1A56DB]" />} title="Equipment">
               <Grid>
                 <Field label="Cranes" value={vessel.crane_details} />
                 <Field label="Vetting Status" value={vessel.vetting_status} />
@@ -112,7 +126,7 @@ export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailMo
               {vessel.special_features && vessel.special_features !== '[]' && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {parseJsonArray(vessel.special_features).map((feat, i) => (
-                    <Badge key={i} variant="outline" className="border-slate-600 text-slate-400 text-xs">
+                    <Badge key={i} variant="outline" className="border-[#E8E5DF] text-[#757575] text-xs">
                       {feat}
                     </Badge>
                   ))}
@@ -121,7 +135,7 @@ export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailMo
             </Section>
 
             {/* Performance */}
-            <Section icon={<Gauge className="h-4 w-4 text-sky-400" />} title="Performance">
+            <Section icon={<Gauge className="h-4 w-4 text-[#1A56DB]" />} title="Performance">
               <Grid>
                 <Field
                   label="Speed (Laden)"
@@ -152,10 +166,10 @@ export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailMo
 
             {/* Cargo History */}
             {vessel.last_5_cargoes && vessel.last_5_cargoes !== '[]' && (
-              <Section icon={<Package className="h-4 w-4 text-sky-400" />} title="Last 5 Cargoes">
+              <Section icon={<Package className="h-4 w-4 text-[#1A56DB]" />} title="Last 5 Cargoes">
                 <div className="flex flex-wrap gap-1.5">
                   {parseJsonArray(vessel.last_5_cargoes).map((cargo, i) => (
-                    <Badge key={i} variant="outline" className="border-slate-600 text-slate-300 text-xs">
+                    <Badge key={i} variant="outline" className="border-[#E8E5DF] text-[#4B4B4B] text-xs font-medium">
                       {cargo}
                     </Badge>
                   ))}
@@ -164,14 +178,14 @@ export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailMo
             )}
 
             {/* Ownership */}
-            <Section icon={<Building2 className="h-4 w-4 text-sky-400" />} title="Ownership">
+            <Section icon={<Building2 className="h-4 w-4 text-[#1A56DB]" />} title="Ownership">
               <Grid>
                 <Field label="Owner / Manager" value={vessel.owner_manager} />
               </Grid>
             </Section>
 
             {/* Market History */}
-            <Section icon={<Calendar className="h-4 w-4 text-sky-400" />} title="Market Activity">
+            <Section icon={<Calendar className="h-4 w-4 text-[#1A56DB]" />} title="Market Activity">
               <Grid>
                 <Field label="First Seen" value={formatDate(vessel.first_seen_at)} />
                 <Field label="Last Seen" value={formatDate(vessel.last_seen_at)} />
@@ -198,7 +212,7 @@ function Section({
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         {icon}
-        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">{title}</h3>
+        <h3 className="text-xs font-bold text-[#9C9891] uppercase tracking-widest">{title}</h3>
       </div>
       {children}
     </div>
@@ -206,15 +220,15 @@ function Section({
 }
 
 function Grid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-2 gap-x-6 gap-y-2">{children}</div>
+  return <div className="grid grid-cols-2 gap-x-6 gap-y-3">{children}</div>
 }
 
 function Field({ label, value }: { label: string; value: string | number | null | undefined }) {
   if (!value && value !== 0) return null
   return (
     <div>
-      <p className="text-xs text-slate-500 mb-0.5">{label}</p>
-      <p className="text-sm text-slate-200">{value}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#9C9891] mb-0.5">{label}</p>
+      <p className="text-sm text-[#0D0D0D] font-medium">{value}</p>
     </div>
   )
 }

@@ -10,39 +10,41 @@ interface LiveIndicatorProps {
 export function LiveIndicator({ status }: LiveIndicatorProps) {
   const config = {
     connected: {
-      dot: 'bg-emerald-400',
-      ping: 'bg-emerald-400',
-      text: 'text-emerald-400',
+      dot: 'bg-[#0E9F6E]',
+      ping: 'bg-[#0E9F6E]',
+      textColor: '#0E9F6E',
       label: 'Live',
     },
     connecting: {
-      dot: 'bg-amber-400',
-      ping: 'bg-amber-400',
-      text: 'text-amber-400',
+      dot: 'bg-[#D97706]',
+      ping: 'bg-[#D97706]',
+      textColor: '#D97706',
       label: 'Connecting...',
     },
     disconnected: {
-      dot: 'bg-red-400',
+      dot: 'bg-[#EF4444]',
       ping: '',
-      text: 'text-red-400',
+      textColor: '#EF4444',
       label: 'Offline',
     },
   }[status]
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="relative flex h-2.5 w-2.5">
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E8E5DF] rounded-xl shadow-sm">
+      <span className="relative flex h-2 w-2">
         {(status === 'connected' || status === 'connecting') && (
           <span
             className={cn(
-              'absolute inline-flex h-full w-full animate-ping rounded-full opacity-75',
+              'absolute inline-flex h-full w-full animate-ping rounded-full opacity-60',
               config.ping
             )}
           />
         )}
-        <span className={cn('relative inline-flex h-2.5 w-2.5 rounded-full', config.dot)} />
+        <span className={cn('relative inline-flex h-2 w-2 rounded-full', config.dot)} />
       </span>
-      <span className={cn('text-xs font-medium', config.text)}>{config.label}</span>
+      <span className="text-xs font-medium" style={{ color: config.textColor }}>
+        {config.label}
+      </span>
     </div>
   )
 }

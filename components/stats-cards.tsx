@@ -1,7 +1,6 @@
 'use client'
 
 import { Ship, TrendingUp, Calendar, Layers } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
 import type { VesselStats } from '@/lib/types'
 
 interface StatsCardsProps {
@@ -13,53 +12,70 @@ export function StatsCards({ stats }: StatsCardsProps) {
 
   const cards = [
     {
-      icon: <Ship className="h-5 w-5 text-sky-400" />,
+      icon: <Ship className="h-4 w-4" />,
       label: 'Total Vessels',
       value: stats.total.toString(),
       sub: 'in market',
-      accent: 'border-sky-500/20',
+      accentColor: '#1A56DB',
+      iconBg: '#EFF6FF',
+      iconColor: '#1A56DB',
     },
     {
-      icon: <TrendingUp className="h-5 w-5 text-emerald-400" />,
+      icon: <TrendingUp className="h-4 w-4" />,
       label: 'New Today',
       value: stats.newToday.toString(),
       sub: `${stats.newThisWeek} this week`,
-      accent: 'border-emerald-500/20',
+      accentColor: '#0E9F6E',
+      iconBg: '#F0FDF4',
+      iconColor: '#0E9F6E',
     },
     {
-      icon: <Layers className="h-5 w-5 text-amber-400" />,
+      icon: <Layers className="h-4 w-4" />,
       label: 'Most Common Type',
       value: topType ? topType[0] : '—',
       sub: topType ? `${topType[1]} vessels` : '',
-      accent: 'border-amber-500/20',
+      accentColor: '#D97706',
+      iconBg: '#FFFBEB',
+      iconColor: '#D97706',
     },
     {
-      icon: <Calendar className="h-5 w-5 text-purple-400" />,
+      icon: <Calendar className="h-4 w-4" />,
       label: 'Sources',
       value: `${stats.bySource['email'] ?? 0}E / ${stats.bySource['whatsapp'] ?? 0}W / ${stats.bySource['teams'] ?? 0}T`,
       sub: 'Email / WhatsApp / Teams',
-      accent: 'border-purple-500/20',
+      accentColor: '#7C3AED',
+      iconBg: '#F5F3FF',
+      iconColor: '#7C3AED',
     },
   ]
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((card) => (
-        <Card
+        <div
           key={card.label}
-          className={`bg-slate-800/30 border-slate-700/50 ${card.accent} backdrop-blur-sm`}
+          className="bg-white border border-[#E8E5DF] rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
+          style={{ borderTopWidth: '3px', borderTopColor: card.accentColor }}
         >
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                {card.label}
-              </p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#9C9891]">
+              {card.label}
+            </p>
+            <div
+              className="flex items-center justify-center h-7 w-7 rounded-lg"
+              style={{ backgroundColor: card.iconBg, color: card.iconColor }}
+            >
               {card.icon}
             </div>
-            <p className="text-2xl font-bold text-slate-100 leading-none mb-1">{card.value}</p>
-            <p className="text-xs text-slate-500">{card.sub}</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p
+            className="text-3xl font-bold text-[#0D0D0D] leading-none mb-1 tracking-tight"
+            style={{ fontFamily: 'var(--font-space-grotesk)' }}
+          >
+            {card.value}
+          </p>
+          <p className="text-xs text-[#9C9891] mt-1.5">{card.sub}</p>
+        </div>
       ))}
     </div>
   )

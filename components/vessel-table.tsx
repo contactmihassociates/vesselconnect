@@ -61,35 +61,35 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-[#B5B0A5]">
         <Ship className="h-10 w-10 animate-pulse" />
-        <p className="text-sm">Loading vessels...</p>
+        <p className="text-sm font-medium">Loading vessels...</p>
       </div>
     )
   }
 
   if (vessels.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-[#B5B0A5]">
         <Ship className="h-10 w-10" />
-        <p className="text-sm">No vessels match the current filters</p>
+        <p className="text-sm font-medium">No vessels match the current filters</p>
       </div>
     )
   }
 
   return (
     <>
-      <div className="rounded-xl border border-slate-700/50 overflow-hidden bg-slate-800/20">
+      <div className="rounded-2xl border border-[#E8E5DF] overflow-hidden bg-white shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow className="border-slate-700/50 hover:bg-transparent">
+            <TableRow className="border-[#E8E5DF] hover:bg-transparent bg-[#F7F6F3]">
               <SortHead label="Vessel Name" sortKey="vessel_name" current={sortKey} dir={sortDir} onSort={handleSort} primary />
               <SortHead label="DWT" sortKey="dwt" current={sortKey} dir={sortDir} onSort={handleSort} primary />
-              <TableHead className="text-sky-400 text-sm font-bold uppercase tracking-wider">Type</TableHead>
+              <TableHead className="text-[#0D0D0D] text-xs font-bold uppercase tracking-widest">Type</TableHead>
               <SortHead label="Open Date" sortKey="open_date" current={sortKey} dir={sortDir} onSort={handleSort} />
               <SortHead label="Open Port" sortKey="open_port" current={sortKey} dir={sortDir} onSort={handleSort} />
               <SortHead label="Region" sortKey="region" current={sortKey} dir={sortDir} onSort={handleSort} />
-              <TableHead className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Source</TableHead>
+              <TableHead className="text-[#9C9891] text-xs font-semibold uppercase tracking-widest">Source</TableHead>
               <SortHead label="Built" sortKey="built_year" current={sortKey} dir={sortDir} onSort={handleSort} />
             </TableRow>
           </TableHeader>
@@ -97,36 +97,31 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
             {paged.map((vessel) => (
               <TableRow
                 key={vessel.id}
-                className="border-slate-700/30 hover:bg-sky-950/40 cursor-pointer transition-colors group"
+                className="border-[#F0EEE9] hover:bg-[#F7F6F3] cursor-pointer transition-colors group"
                 onClick={() => openDetail(vessel)}
               >
-                <TableCell className="font-bold text-white text-base group-hover:text-sky-300 transition-colors py-4">
-                  {vessel.vessel_name ?? <span className="text-slate-500 italic font-normal text-sm">(Unknown)</span>}
+                <TableCell className="font-bold text-[#0D0D0D] text-[0.92rem] group-hover:text-[#1A56DB] transition-colors py-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  {vessel.vessel_name ?? <span className="text-[#B5B0A5] italic font-normal text-sm">(Unknown)</span>}
                 </TableCell>
-                <TableCell className="text-sky-200 text-base font-semibold tabular-nums py-4">
+                <TableCell className="text-[#1A56DB] text-sm font-semibold tabular-nums py-4">
                   {formatDWT(vessel.dwt)}
                 </TableCell>
                 <TableCell className="py-4">
                   <Badge
-                    className="bg-sky-500/20 border border-sky-500/40 text-sky-300 text-sm font-semibold px-3 py-1"
+                    className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#1D4ED8] text-xs font-semibold px-2.5 py-0.5"
                   >
                     {inferVesselType(vessel.dwt)}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-slate-300 text-sm tabular-nums">
+                <TableCell className="text-[#4B4B4B] text-sm tabular-nums">
                   {formatDate(vessel.open_date)}
                 </TableCell>
-                <TableCell className="text-slate-300 text-sm">{vessel.open_port ?? '—'}</TableCell>
-                <TableCell className="text-slate-400 text-sm">{vessel.region ?? '—'}</TableCell>
+                <TableCell className="text-[#4B4B4B] text-sm">{vessel.open_port ?? '—'}</TableCell>
+                <TableCell className="text-[#757575] text-sm">{vessel.region ?? '—'}</TableCell>
                 <TableCell>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs border ${getSourceColor(vessel.source)}`}
-                  >
-                    {getSourceLabel(vessel.source)}
-                  </Badge>
+                  <SourceBadge source={vessel.source} />
                 </TableCell>
-                <TableCell className="text-slate-400 text-sm tabular-nums">
+                <TableCell className="text-[#757575] text-sm tabular-nums">
                   {vessel.built_year ?? '—'}
                 </TableCell>
               </TableRow>
@@ -137,26 +132,26 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
 
       {/* Pagination */}
       <div className="flex items-center justify-between pt-2">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-[#9C9891]">
           Showing {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} of {sorted.length} vessels
         </p>
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
             size="sm"
-            className="h-7 px-2 text-xs border-slate-700 bg-slate-800/50 text-slate-400 hover:text-slate-200 disabled:opacity-30"
+            className="h-7 px-3 text-xs border-[#E8E5DF] bg-white text-[#757575] hover:text-[#0D0D0D] hover:bg-[#F0EEE9] disabled:opacity-30"
             disabled={currentPage <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
             Prev
           </Button>
-          <span className="text-xs text-slate-500 px-2">
+          <span className="text-xs text-[#9C9891] px-2">
             {currentPage} / {totalPages}
           </span>
           <Button
             variant="outline"
             size="sm"
-            className="h-7 px-2 text-xs border-slate-700 bg-slate-800/50 text-slate-400 hover:text-slate-200 disabled:opacity-30"
+            className="h-7 px-3 text-xs border-[#E8E5DF] bg-white text-[#757575] hover:text-[#0D0D0D] hover:bg-[#F0EEE9] disabled:opacity-30"
             disabled={currentPage >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >
@@ -171,6 +166,24 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
         onOpenChange={setModalOpen}
       />
     </>
+  )
+}
+
+function SourceBadge({ source }: { source: string | null | undefined }) {
+  const config: Record<string, { bg: string; text: string; border: string; label: string }> = {
+    email:    { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE', label: 'Email' },
+    whatsapp: { bg: '#F0FDF4', text: '#15803D', border: '#BBF7D0', label: 'WhatsApp' },
+    teams:    { bg: '#F5F3FF', text: '#6D28D9', border: '#DDD6FE', label: 'Teams' },
+  }
+  const c = config[source ?? ''] ?? { bg: '#F5F5F5', text: '#6B7280', border: '#E5E7EB', label: source ?? 'Unknown' }
+  return (
+    <Badge
+      variant="outline"
+      className="text-xs font-medium px-2 py-0.5"
+      style={{ backgroundColor: c.bg, color: c.text, borderColor: c.border }}
+    >
+      {c.label}
+    </Badge>
   )
 }
 
@@ -191,9 +204,9 @@ function SortHead({
 }) {
   const isActive = current === sortKey
   return (
-    <TableHead className={primary ? 'text-sky-400 text-sm font-bold uppercase tracking-wider' : 'text-slate-400 text-xs font-semibold uppercase tracking-wider'}>
+    <TableHead className={primary ? 'text-[#0D0D0D] text-xs font-bold uppercase tracking-widest' : 'text-[#9C9891] text-xs font-semibold uppercase tracking-widest'}>
       <button
-        className="flex items-center gap-1 hover:text-white transition-colors"
+        className="flex items-center gap-1 hover:text-[#0D0D0D] transition-colors"
         onClick={() => onSort(sortKey)}
       >
         {label}
@@ -204,7 +217,7 @@ function SortHead({
             <ChevronDown className={primary ? 'h-4 w-4' : 'h-3 w-3'} />
           )
         ) : (
-          <ChevronsUpDown className={primary ? 'h-4 w-4 opacity-50' : 'h-3 w-3 opacity-40'} />
+          <ChevronsUpDown className={primary ? 'h-4 w-4 opacity-30' : 'h-3 w-3 opacity-30'} />
         )}
       </button>
     </TableHead>

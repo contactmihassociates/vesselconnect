@@ -31,18 +31,18 @@ export function SearchBar({
 
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9C9891]" />
       <Input
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
         placeholder={placeholder}
-        className="pl-9 pr-9 bg-slate-800/50 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:ring-sky-500/20"
+        className="pl-9 pr-9 bg-white border-[#E8E5DF] text-[#0D0D0D] placeholder:text-[#B5B0A5] focus:border-[#1A56DB] focus:ring-[#1A56DB]/20 rounded-xl shadow-sm"
       />
       {localValue && (
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+          className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-[#9C9891] hover:text-[#0D0D0D] hover:bg-[#F0EEE9]"
           onClick={() => {
             setLocalValue('')
             onChange('')

@@ -22,7 +22,7 @@ export function ExportButton({ vessels }: ExportButtonProps) {
       size="sm"
       onClick={handleExport}
       disabled={vessels.length === 0}
-      className="border-slate-700 bg-slate-800/50 text-slate-300 hover:text-slate-100 hover:bg-slate-700 gap-2"
+      className="border-[#E8E5DF] bg-white text-[#4B4B4B] hover:text-[#0D0D0D] hover:bg-[#F0EEE9] gap-2 rounded-xl shadow-sm font-medium"
     >
       <Download className="h-3.5 w-3.5" />
       Export CSV

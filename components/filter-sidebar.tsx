@@ -3,7 +3,6 @@
 import { X, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { VESSEL_TYPES, REGIONS, SOURCES, type VesselType, type VesselSource } from '@/lib/types'
@@ -31,26 +30,28 @@ export function FilterSidebar({
   filteredCount,
 }: FilterSidebarProps) {
   return (
-    <aside className="w-64 shrink-0 rounded-xl border border-slate-700/50 bg-slate-800/30 backdrop-blur-sm">
+    <aside className="w-60 shrink-0 rounded-2xl border border-[#E8E5DF] bg-white shadow-sm">
       <div className="flex items-center justify-between p-4 pb-3">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4 text-slate-400" />
-          <span className="text-sm font-semibold text-slate-200">Filters</span>
+          <SlidersHorizontal className="h-4 w-4 text-[#9C9891]" />
+          <span className="text-sm font-semibold text-[#0D0D0D]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+            Filters
+          </span>
           {hasActiveFilters && (
-            <Badge variant="secondary" className="bg-sky-500/20 text-sky-400 text-xs px-1.5 py-0">
-              Active
-            </Badge>
+            <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-[#1A56DB] text-white text-[10px] font-bold">
+              ·
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-[#9C9891]">
             {filteredCount}/{totalCount}
           </span>
           {hasActiveFilters && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-slate-400 hover:text-slate-200"
+              className="h-6 w-6 text-[#9C9891] hover:text-[#0D0D0D] hover:bg-[#F0EEE9]"
               onClick={onClear}
             >
               <X className="h-3.5 w-3.5" />
@@ -59,7 +60,7 @@ export function FilterSidebar({
         </div>
       </div>
 
-      <Separator className="bg-slate-700/50" />
+      <Separator className="bg-[#E8E5DF]" />
 
       <ScrollArea className="h-[calc(100vh-220px)]">
         <div className="p-4 space-y-5">
@@ -72,18 +73,18 @@ export function FilterSidebar({
                 label={label}
                 checked={filters.sources.includes(value)}
                 onCheckedChange={() => onToggleSource(value)}
-                accent={
+                accentColor={
                   value === 'email'
-                    ? 'text-blue-400'
+                    ? '#1D4ED8'
                     : value === 'whatsapp'
-                    ? 'text-green-400'
-                    : 'text-purple-400'
+                    ? '#15803D'
+                    : '#6D28D9'
                 }
               />
             ))}
           </FilterSection>
 
-          <Separator className="bg-slate-700/30" />
+          <Separator className="bg-[#F0EEE9]" />
 
           {/* Vessel Type */}
           <FilterSection title="Vessel Type">
@@ -98,7 +99,7 @@ export function FilterSidebar({
             ))}
           </FilterSection>
 
-          <Separator className="bg-slate-700/30" />
+          <Separator className="bg-[#F0EEE9]" />
 
           {/* Region */}
           <FilterSection title="Region">
@@ -127,7 +128,7 @@ function FilterSection({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-[#9C9891]">{title}</p>
       <div className="space-y-1.5">{children}</div>
     </div>
   )
@@ -138,13 +139,13 @@ function FilterCheckbox({
   label,
   checked,
   onCheckedChange,
-  accent,
+  accentColor,
 }: {
   id: string
   label: string
   checked: boolean
   onCheckedChange: () => void
-  accent?: string
+  accentColor?: string
 }) {
   return (
     <label
@@ -155,14 +156,14 @@ function FilterCheckbox({
         id={id}
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="border-slate-600 data-[state=checked]:bg-sky-500 data-[state=checked]:border-sky-500"
+        className="border-[#D4D0C8] data-[state=checked]:bg-[#0D0D0D] data-[state=checked]:border-[#0D0D0D]"
       />
       <span
-        className={`text-sm transition-colors ${
-          checked
-            ? accent ?? 'text-slate-200'
-            : 'text-slate-400 group-hover:text-slate-300'
-        }`}
+        className="text-sm transition-colors"
+        style={{
+          color: checked ? (accentColor ?? '#0D0D0D') : '#757575',
+          fontWeight: checked ? 500 : 400,
+        }}
       >
         {label}
       </span>

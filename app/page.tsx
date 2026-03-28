@@ -32,7 +32,23 @@ export default function HomePage() {
   const stats = useStats(vessels)
 
   return (
-    <main className="flex-1 max-w-[1600px] mx-auto w-full px-6 py-6 space-y-5">
+    <main className="flex-1 max-w-[1600px] mx-auto w-full px-8 py-7 space-y-6">
+      {/* Page heading */}
+      <div>
+        <h1
+          className="text-2xl font-bold text-[#0D0D0D] tracking-tight leading-none"
+          style={{ fontFamily: 'var(--font-space-grotesk)' }}
+        >
+          Vessel Market
+        </h1>
+        <p className="text-sm text-[#9C9891] mt-1">
+          Live availability feed — bulk carriers open for charter
+        </p>
+      </div>
+
+      {/* Stats */}
+      <StatsCards stats={stats} />
+
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="flex-1">
@@ -47,9 +63,12 @@ export default function HomePage() {
         {/* Table */}
         <div className="flex-1 min-w-0 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-300">
+            <h2
+              className="text-sm font-semibold text-[#0D0D0D]"
+              style={{ fontFamily: 'var(--font-space-grotesk)' }}
+            >
               Vessel List
-              <span className="ml-2 text-slate-500 font-normal">
+              <span className="ml-2 text-[#9C9891] font-normal">
                 {filteredVessels.length} vessels
               </span>
             </h2>
@@ -69,9 +88,6 @@ export default function HomePage() {
           filteredCount={filteredVessels.length}
         />
       </div>
-
-      {/* Stats — secondary info at the bottom */}
-      <StatsCards stats={stats} />
     </main>
   )
 }
