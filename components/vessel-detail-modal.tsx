@@ -9,7 +9,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Ship, Anchor, Gauge, Package, Building2, Calendar, MapPin } from 'lucide-react'
+import { Ship, Anchor, Gauge, Package, Building2, Calendar, MapPin, Award, Wrench, Factory } from 'lucide-react'
 import type { Vessel } from '@/lib/types'
 import { formatDate, formatDWT, getSourceLabel, inferVesselType } from '@/lib/utils'
 
@@ -181,8 +181,32 @@ export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailMo
             <Section icon={<Building2 className="h-4 w-4 text-[#1A56DB]" />} title="Ownership">
               <Grid>
                 <Field label="Owner / Manager" value={vessel.owner_manager} />
+                <Field label="Commercial Operator" value={vessel.commercial_operator} />
               </Grid>
             </Section>
+
+            {/* Classification & CII — only shown if master-enriched */}
+            {(vessel.classification || vessel.cii_ranking_last_year || vessel.eexi) && (
+              <Section icon={<Award className="h-4 w-4 text-[#1A56DB]" />} title="Classification">
+                <Grid>
+                  <Field label="Classification Society" value={vessel.classification} />
+                  <Field label="CII Ranking (Last Year)" value={vessel.cii_ranking_last_year} />
+                  <Field label="CII Ranking (YTD)" value={vessel.cii_ranking_ytd} />
+                  <Field label="EEXI" value={vessel.eexi} />
+                </Grid>
+              </Section>
+            )}
+
+            {/* Build details — only shown if master-enriched */}
+            {(vessel.shipyard_built || vessel.country_built || vessel.design_model) && (
+              <Section icon={<Factory className="h-4 w-4 text-[#1A56DB]" />} title="Build Details">
+                <Grid>
+                  <Field label="Shipyard" value={vessel.shipyard_built} />
+                  <Field label="Country Built" value={vessel.country_built} />
+                  <Field label="Design Model" value={vessel.design_model} />
+                </Grid>
+              </Section>
+            )}
 
             {/* Market History */}
             <Section icon={<Calendar className="h-4 w-4 text-[#1A56DB]" />} title="Market Activity">
@@ -190,8 +214,25 @@ export function VesselDetailModal({ vessel, open, onOpenChange }: VesselDetailMo
                 <Field label="First Seen" value={formatDate(vessel.first_seen_at)} />
                 <Field label="Last Seen" value={formatDate(vessel.last_seen_at)} />
                 <Field label="Source Channel" value={getSourceLabel(vessel.source)} />
+                {vessel.imo && <Field label="IMO Number" value={vessel.imo} />}
               </Grid>
             </Section>
+
+            {/* Data source indicator */}
+            <div className="pt-1">
+              {vessel.match_confidence ? (
+                <p className="text-xs text-[#0E9F6E] font-medium flex items-center gap-1.5">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#0E9F6E]" />
+                  Data enriched from vessel master database
+                  {vessel.match_confidence === 'imo' ? ' (IMO match)' : vessel.match_confidence === 'exact_name' ? ' (name match)' : ' (fuzzy match)'}
+                </p>
+              ) : (
+                <p className="text-xs text-[#9C9891] flex items-center gap-1.5">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#D4D0C8]" />
+                  Data from scraped source only
+                </p>
+              )}
+            </div>
           </div>
         </ScrollArea>
       </DialogContent>

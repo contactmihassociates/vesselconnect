@@ -47,6 +47,21 @@ export interface Vessel {
   region: string | null
   vessel_type: VesselType | null
   created_at?: string
+  // Master-enriched fields
+  imo?: number | null
+  classification?: string | null
+  design_model?: string | null
+  country_built?: string | null
+  shipyard_built?: string | null
+  bale_capacity?: number | null
+  summer_draught?: number | null
+  commercial_operator?: string | null
+  cii_ranking_last_year?: string | null
+  cii_ranking_ytd?: string | null
+  eexi?: number | null
+  match_confidence?: 'imo' | 'exact_name' | 'fuzzy' | null
+  match_score?: number | null
+  enriched_at?: string | null
 }
 
 export interface FilterState {

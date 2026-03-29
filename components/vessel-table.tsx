@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Ship } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Ship, Circle } from 'lucide-react'
 import type { Vessel } from '@/lib/types'
 import { formatDate, formatDWT, getSourceColor, getSourceLabel, inferVesselType } from '@/lib/utils'
 import { VesselDetailModal } from './vessel-detail-modal'
@@ -101,7 +101,10 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
                 onClick={() => openDetail(vessel)}
               >
                 <TableCell className="font-bold text-[#0D0D0D] text-[0.92rem] group-hover:text-[#1A56DB] transition-colors py-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                  {vessel.vessel_name ?? <span className="text-[#B5B0A5] italic font-normal text-sm">(Unknown)</span>}
+                  <div className="flex items-center gap-2">
+                    <MatchDot confidence={vessel.match_confidence ?? null} />
+                    {vessel.vessel_name ?? <span className="text-[#B5B0A5] italic font-normal text-sm">(Unknown)</span>}
+                  </div>
                 </TableCell>
                 <TableCell className="text-[#1A56DB] text-sm font-semibold tabular-nums py-4">
                   {formatDWT(vessel.dwt)}
@@ -166,6 +169,26 @@ export function VesselTable({ vessels, loading }: VesselTableProps) {
         onOpenChange={setModalOpen}
       />
     </>
+  )
+}
+
+function MatchDot({ confidence }: { confidence: string | null }) {
+  const configs: Record<string, { color: string; label: string }> = {
+    imo:        { color: '#0E9F6E', label: 'Master-matched (IMO)' },
+    exact_name: { color: '#1A56DB', label: 'Master-matched (name)' },
+    fuzzy:      { color: '#D97706', label: 'Fuzzy match' },
+  }
+  const cfg = confidence ? configs[confidence] : null
+  return (
+    <span
+      title={cfg ? cfg.label : 'Unmatched — scraped data only'}
+      className="inline-flex shrink-0 cursor-help"
+    >
+      <span
+        className="inline-block h-2 w-2 rounded-full"
+        style={{ backgroundColor: cfg ? cfg.color : '#D4D0C8' }}
+      />
+    </span>
   )
 }
 
